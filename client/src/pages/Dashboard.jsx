@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, fmtDate } from '../api';
 import { useAuth } from '../AuthContext.jsx';
+import { waLink } from '../whatsapp';
 import { ItemCard, Badge } from '../components.jsx';
 
 const TABS = [['lost', 'My lost items'], ['found', 'My found items'], ['claims', 'My claims'], ['matches', 'Possible matches'], ['notifications', 'Notifications'], ['recovered', 'Recovered']];
@@ -73,12 +74,20 @@ export default function Dashboard() {
                   <dt>What was inside</dt><dd>{c.answers.contents}</dd>
                 </dl>
               </div>
-              {c.status === 'pending' && (
-                <div className="actions">
-                  <button className="btn sm" onClick={() => review(c._id, 'approved')}>Approve</button>
-                  <button className="btn ghost sm" onClick={() => review(c._id, 'rejected')}>Reject</button>
-                </div>
-              )}
+              <div className="actions">
+                {c.claimant?.phone && c.status !== 'rejected' && (
+                  <a className="btn sm wa" target="_blank" rel="noreferrer"
+                    href={waLink(c.claimant.phone, `Hi ${c.claimant.name}, aapne MPGI Lost & Found par "${c.item.name}" claim kiya hai. Main finder hoon. Kahan aur kab mil sakte hain?`)}>
+                    WhatsApp {c.claimant.name.split(' ')[0]}
+                  </a>
+                )}
+                {c.status === 'pending' && (
+                  <>
+                    <button className="btn sm" onClick={() => review(c._id, 'approved')}>Approve</button>
+                    <button className="btn ghost sm" onClick={() => review(c._id, 'rejected')}>Reject</button>
+                  </>
+                )}
+              </div>
             </div>
           ))}
           <h2>My claims</h2>
@@ -88,7 +97,15 @@ export default function Dashboard() {
                 <Link to={`/item/${c.item?._id}`}><b>{c.item?.name}</b></Link>
                 <p className="muted small">Submitted {fmtDate(c.createdAt)}</p>
               </div>
-              <Badge type={c.status}>{c.status}</Badge>
+              <div className="actions">
+                {c.poster?.phone && c.status !== 'rejected' && (
+                  <a className="btn sm wa" target="_blank" rel="noreferrer"
+                    href={waLink(c.poster.phone, `Hi ${c.poster.name}, main ${user.name} hoon. Maine MPGI Lost & Found par "${c.item?.name}" claim kiya hai. Kahan aur kab mil sakte hain?`)}>
+                    WhatsApp finder
+                  </a>
+                )}
+                <Badge type={c.status}>{c.status}</Badge>
+              </div>
             </div>
           ))}
         </>

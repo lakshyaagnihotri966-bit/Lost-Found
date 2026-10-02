@@ -8,6 +8,8 @@ import Report from './pages/Report.jsx';
 import ItemDetail from './pages/ItemDetail.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Admin from './pages/Admin.jsx';
+import ThemeToggle from './ThemeToggle.jsx';
+import PhoneGate from './PhoneGate.jsx';
 
 function Navbar() {
   const { user, logout, unread } = useAuth();
@@ -22,6 +24,7 @@ function Navbar() {
           <NavLink to="/browse">Browse</NavLink>
           <NavLink to="/report/lost">Report lost</NavLink>
           <NavLink to="/report/found">Report found</NavLink>
+          <ThemeToggle />
           {user ? (
             <>
               <NavLink to="/dashboard">Dashboard{unread > 0 && <span className="dot">{unread}</span>}</NavLink>
@@ -53,6 +56,7 @@ export default function App() {
   return (
     <>
       <Navbar />
+      <PhoneGate />
       <main>
         <Routes>
           <Route path="/" element={<Home />} />

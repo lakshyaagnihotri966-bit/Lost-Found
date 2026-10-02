@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api, getMeta, fmtDate } from '../api';
 import { useAuth } from '../AuthContext.jsx';
 import { Badge, Modal } from '../components.jsx';
+import { waLink } from '../whatsapp';
 
 export default function ItemDetail() {
   const { id } = useParams();
@@ -87,13 +88,32 @@ export default function ItemDetail() {
 }
 
 function ClaimModal({ id, onClose, onDone }) {
+  const { user } = useAuth();
   const [a, setA] = useState({ whereLost: '', uniqueFeature: '', contents: '' });
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(null);
   const set = (k) => (e) => setA({ ...a, [k]: e.target.value });
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr('');
-    try { await api(`/claims/item/${id}`, { method: 'POST', body: a }); onDone(); } catch (e2) { setErr(e2.message); setBusy(false); }
+    try { setDone(await api(`/claims/item/${id}`, { method: 'POST', body: a })); } catch (e2) { setErr(e2.message); setBusy(false); }
   };
+  if (done) {
+    const p = done.poster;
+    return (
+      <Modal title="Claim sent" onClose={onDone}>
+        <p>Your claim was sent to the finder. They will review your answers.</p>
+        {p?.phone ? (
+          <>
+            <p className="muted small">Message the finder on WhatsApp to arrange pickup. The message is already written, you only press Send.</p>
+            <a className="btn wa" target="_blank" rel="noreferrer"
+              href={waLink(p.phone, `Hi ${p.name}, main ${user.name} hoon. Maine MPGI Lost & Found par "${done.itemTitle}" claim kiya hai. Kahan aur kab mil sakte hain?`)}>
+              Open WhatsApp
+            </a>
+          </>
+        ) : <p className="muted small">The finder has no WhatsApp number saved. They will see your claim in their dashboard.</p>}
+      </Modal>
+    );
+  }
   return (
     <Modal title="Claim this item" onClose={onClose}>
       <p className="muted small">Answer in detail. The finder compares your answers with the item before approving.</p>

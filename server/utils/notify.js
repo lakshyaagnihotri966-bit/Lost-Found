@@ -12,7 +12,8 @@ function mailer() {
 }
 
 // Creates an in-app notification and (if Gmail is configured) emails the user too.
-module.exports = async function notify(userId, type, message, link = '/dashboard') {
+// `extra` is optional text added only to the email (e.g. a WhatsApp link).
+module.exports = async function notify(userId, type, message, link = '/dashboard', extra = '') {
   try {
     await Notification.create({ user: userId, type, message, link });
     const m = mailer();
@@ -23,7 +24,7 @@ module.exports = async function notify(userId, type, message, link = '/dashboard
       from: `MPGI Lost & Found <${process.env.GMAIL_USER}>`,
       to: u.email,
       subject: `MPGI Lost & Found: ${message.slice(0, 70)}`,
-      text: `${message}\n\nOpen: ${(process.env.CLIENT_URL || '')}${link}`,
+      text: `${message}\n\nOpen: ${(process.env.CLIENT_URL || '')}${link}${extra ? `\n\n${extra}` : ''}`,
     }).catch((e) => console.error('Email failed:', e.message));
   } catch (e) { console.error('notify failed:', e.message); }
 };

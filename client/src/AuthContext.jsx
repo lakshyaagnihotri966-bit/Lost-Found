@@ -27,7 +27,8 @@ export function AuthProvider({ children }) {
   }, [user, refreshUnread]);
 
   const saveSession = ({ token, user }) => { localStorage.setItem('token', token); setUser(user); };
+  const updateUser = (u) => setUser(u);
   const logout = () => { localStorage.removeItem('token'); setUser(null); };
 
-  return <Ctx.Provider value={{ user, loading, unread, refreshUnread, saveSession, logout }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, loading, unread, refreshUnread, saveSession, updateUser, logout }}>{children}</Ctx.Provider>;
 }

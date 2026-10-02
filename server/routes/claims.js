@@ -1,10 +1,13 @@
 const router = require('express').Router();
 const Item = require('../models/Item');
 const Claim = require('../models/Claim');
+const User = require('../models/User');
 const { auth } = require('../middleware/auth');
 const wrap = require('../utils/wrap');
 const notify = require('../utils/notify');
 const markRecovered = require('../utils/recover');
+
+const waUrl = (phone, text) => `https://wa.me/${String(phone).replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
 
 // Submit a claim with verification answers
 router.post('/item/:itemId', auth, wrap(async (req, res) => {
@@ -16,12 +19,29 @@ router.post('/item/:itemId', auth, wrap(async (req, res) => {
   if (![whereLost, uniqueFeature, contents].every((x) => x && x.trim())) return res.status(400).json({ message: 'Please answer all verification questions' });
   if (await Claim.findOne({ item: item._id, claimant: req.user._id, status: 'pending' })) return res.status(400).json({ message: 'You already have a pending claim on this item' });
   const claim = await Claim.create({ item: item._id, claimant: req.user._id, answers: { whereLost, uniqueFeature, contents } });
-  await notify(item.reporter, 'claim', `${req.user.name} has claimed your found item "${item.name}". Review the answers.`, '/dashboard?tab=claims');
-  res.status(201).json({ claim });
+
+  // Email to the finder also carries a ready-made WhatsApp link to the claimer
+  const extra = req.user.phone
+    ? `WhatsApp ${req.user.name}: ${waUrl(req.user.phone, `Hi ${req.user.name}, aapne MPGI Lost & Found par "${item.name}" claim kiya hai. Main finder hoon. Kahan aur kab mil sakte hain?`)}`
+    : '';
+  await notify(item.reporter, 'claim', `${req.user.name} has claimed your found item "${item.name}". Review the answers.`, '/dashboard?tab=claims', extra);
+
+  // The claimer gets the finder's WhatsApp details (only after claiming)
+  const poster = await User.findById(item.reporter).select('name phone');
+  res.status(201).json({ claim, poster: poster ? { name: poster.name, phone: poster.phone || '' } : null, itemTitle: item.name });
 }));
 
 router.get('/mine', auth, wrap(async (req, res) => {
-  const claims = await Claim.find({ claimant: req.user._id }).sort('-createdAt').populate({ path: 'item', select: 'name imageUrl status type' });
+  const docs = await Claim.find({ claimant: req.user._id }).sort('-createdAt').populate({
+    path: 'item', select: 'name imageUrl status type reporter', populate: { path: 'reporter', select: 'name phone' },
+  });
+  const claims = docs.map((d) => {
+    const o = d.toObject();
+    const rep = o.item && o.item.reporter;
+    o.poster = rep && o.status !== 'rejected' ? { name: rep.name, phone: rep.phone || '' } : null;
+    if (o.item) delete o.item.reporter;
+    return o;
+  });
   res.json({ claims });
 }));
 
@@ -29,7 +49,7 @@ router.get('/mine', auth, wrap(async (req, res) => {
 router.get('/received', auth, wrap(async (req, res) => {
   const mine = await Item.find({ reporter: req.user._id, type: 'found' }).select('_id');
   const claims = await Claim.find({ item: { $in: mine.map((i) => i._id) } }).sort('-createdAt')
-    .populate({ path: 'item', select: 'name imageUrl status' }).populate({ path: 'claimant', select: 'name' });
+    .populate({ path: 'item', select: 'name imageUrl status' }).populate({ path: 'claimant', select: 'name phone' });
   res.json({ claims });
 }));
 
