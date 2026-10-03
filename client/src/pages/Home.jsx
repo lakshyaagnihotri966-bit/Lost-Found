@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
+import { ItemCard } from '../components.jsx';
 
 const steps = [
   ['Report', 'Post what you lost or found with a photo and the place it happened.', 'var(--red)'],
@@ -20,7 +21,9 @@ function Stat({ label, value, color }) {
 
 export default function Home() {
   const [s, setS] = useState({ total: 0, lost: 0, found: 0, recovered: 0 });
+  const [recent, setRecent] = useState(null);
   useEffect(() => { api('/items/stats').then(setS).catch(() => {}); }, []);
+  useEffect(() => { api('/items').then((d) => setRecent(d.items.slice(0, 6))).catch(() => setRecent([])); }, []);
   return (
     <>
       <section className="hero">
@@ -50,6 +53,13 @@ export default function Home() {
         <Stat label="Found" value={s.found} color="var(--blue)" />
         <Stat label="Recovered" value={s.recovered} color="var(--green)" />
       </section>
+
+      {recent && recent.length > 0 && (
+        <section className="wrap recent">
+          <div className="row between"><h2>Recently reported</h2><Link to="/browse">View all</Link></div>
+          <div className="grid">{recent.map((i) => <ItemCard key={i._id} item={i} />)}</div>
+        </section>
+      )}
 
       <section className="wrap page how">
         <h2 className="center">How it works</h2>

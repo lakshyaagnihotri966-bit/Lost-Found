@@ -5,13 +5,13 @@ const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const { auth } = require('../middleware/auth');
 const wrap = require('../utils/wrap');
+const { isSuperAdmin } = require('../utils/admins');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '57285893340-mol4ke4n4eri603382tqtmvbk8n4vpen.apps.googleusercontent.com';
 const gClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 const sign = (u) => jwt.sign({ id: u._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 const pub = (u) => ({ id: u._id, name: u.name, email: u.email, role: u.role, phone: u.phone || '', avatar: u.avatar || '' });
-const isAdminEmail = (e) => !!process.env.ADMIN_EMAIL && e.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase();
 
 // Returns digits with country code (10-digit Indian numbers get 91), or null if invalid.
 function normPhone(p) {
@@ -46,11 +46,12 @@ router.post('/google', wrap(async (req, res) => {
   if (!user) {
     user = await User.create({
       name: p.name || email.split('@')[0], email, googleId: p.sub, avatar: p.picture || '',
-      role: isAdminEmail(email) ? 'admin' : 'user',
+      role: isSuperAdmin(email) ? 'admin' : 'user',
     });
   } else {
     if (!user.googleId) user.googleId = p.sub;
     if (!user.avatar && p.picture) user.avatar = p.picture;
+    if (isSuperAdmin(email) && user.role !== 'admin') user.role = 'admin';
     await user.save();
   }
   res.json({ token: sign(user), user: pub(user) });

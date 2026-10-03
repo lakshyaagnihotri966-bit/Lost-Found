@@ -8,7 +8,7 @@ export default function PhoneGate() {
   const [phone, setPhone] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
-  if (!user || user.phone || user.role === 'admin') return null;
+  if (!user || user.phone) return null;
 
   const submit = async (e) => {
     e.preventDefault(); setErr(''); setBusy(true);

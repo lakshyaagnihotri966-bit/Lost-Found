@@ -1,0 +1,17 @@
+/* Extra UI polish */
+.ok { color: var(--green-d); font-weight: 600; margin: .5rem 0; }
+.contact { border-left: 5px solid #1fa855; }
+.recent { margin-top: 48px; }
+.recent h2 { margin-top: 0; }
+.card.item .thumb { overflow: hidden; }
+.card.item .thumb img { transition: transform .35s ease; }
+.card.item:hover .thumb img { transform: scale(1.05); }
+
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 0 0 14px; }
+.toolbar input, .toolbar select { width: auto; flex: 1 1 200px; max-width: 340px; }
+.toolbar.bulk { position: sticky; top: 84px; z-index: 5; padding: 10px 16px; border-left: 5px solid var(--red); }
+.chk { width: 18px; height: 18px; accent-color: var(--blue-2); cursor: pointer; }
+td.actions { white-space: nowrap; }
+tbody tr:hover { background: rgba(10, 70, 196, .05); }
+.btn:active { transform: translateY(0); }
+html { scroll-behavior: smooth; }

@@ -15,22 +15,32 @@ export default function ItemDetail() {
   const [modal, setModal] = useState('');
   const [msg, setMsg] = useState('');
   const [reasons, setReasons] = useState([]);
+  const [meta, setMeta] = useState({ categories: [], locations: [] });
+  const [copied, setCopied] = useState(false);
 
   const load = () => api(`/items/${id}`).then(setData).catch((e) => setErr(e.message));
   useEffect(() => { load(); setQr(null); }, [id, user]);
-  useEffect(() => { getMeta().then((m) => setReasons(m.reportReasons || [])); }, []);
+  useEffect(() => { getMeta().then((m) => { setReasons(m.reportReasons || []); setMeta(m); }); }, []);
   useEffect(() => {
     if (data?.item.type === 'found') api(`/items/${id}/qr`).then(setQr).catch(() => {});
   }, [data?.item.type, id]);
 
   if (err) return <div className="wrap page"><h1>Item not found</h1><p className="muted">{err}</p><Link to="/browse">Browse items</Link></div>;
   if (!data) return <div className="wrap page muted">Loading…</div>;
-  const { item, isOwner, myClaim } = data;
+  const { item, isOwner, myClaim, contact } = data;
   const found = item.type === 'found';
   const recovered = item.status === 'recovered';
   const needLogin = () => nav('/login', { state: { from: `/item/${id}` } });
 
   const openModal = (m) => (user ? setModal(m) : needLogin());
+  const share = async () => {
+    const url = window.location.href;
+    const title = `${found ? 'Found' : 'Lost'} at MPGI: ${item.name}`;
+    try {
+      if (navigator.share) await navigator.share({ title, url });
+      else { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    } catch { /* cancelled */ }
+  };
   const act = async (fn) => { try { await fn(); await load(); } catch (e) { setMsg(e.message); } };
 
   return (
@@ -60,6 +70,8 @@ export default function ItemDetail() {
               : <button className="btn" onClick={() => openModal('claim')}>Claim item</button>
           )}
           {!isOwner && <button className="btn ghost" onClick={() => openModal('report')}>Report listing</button>}
+          <button className="btn ghost" onClick={share}>{copied ? 'Link copied' : 'Share'}</button>
+          {(isOwner || user?.role === 'admin') && !recovered && <button className="btn ghost" onClick={() => setModal('edit')}>Edit</button>}
           {(isOwner || user?.role === 'admin') && !recovered && (
             <button className="btn ghost" onClick={() => act(() => api(`/items/${id}/recover`, { method: 'PATCH' }))}>Mark as recovered</button>
           )}
@@ -68,6 +80,28 @@ export default function ItemDetail() {
           )}
         </div>
         {myClaim && <p className="muted small">Your claim: {myClaim.status}</p>}
+
+        {!isOwner && !recovered && (
+          <div className="card contact" style={{ marginTop: 18 }}>
+            <h3>{found ? 'Is this yours?' : 'Did you find this?'}</h3>
+            {!user ? (
+              <p className="muted small">Log in with Google to see the contact number. <Link to="/login" state={{ from: `/item/${id}` }}>Log in</Link></p>
+            ) : contact?.phone ? (
+              <>
+                <p className="muted small">Posted by {contact.name}. {found ? 'Message or call them to verify the item and collect it.' : 'Message or call them to return their item.'}</p>
+                <div className="actions">
+                  <a className="btn wa" target="_blank" rel="noreferrer"
+                    href={waLink(contact.phone, found
+                      ? `Hi ${contact.name}, main ${user.name} hoon. MPGI Lost & Found par aapka found item "${item.name}" mera hai. Kahan aur kab mil sakte hain?`
+                      : `Hi ${contact.name}, main ${user.name} hoon. Aapka lost item "${item.name}" mujhe mila hai. Kahan aur kab return kar sakta hoon?`)}>
+                    {found ? 'WhatsApp the finder' : 'I found this: WhatsApp owner'}
+                  </a>
+                  <a className="btn ghost" href={`tel:+${contact.phone}`}>Call +{contact.phone}</a>
+                </div>
+              </>
+            ) : <p className="muted small">{contact?.name || 'The poster'} has not added a contact number yet.{found ? ' You can still use Claim item above.' : ''}</p>}
+          </div>
+        )}
 
         {qr && (
           <div className="qr card">
@@ -83,6 +117,7 @@ export default function ItemDetail() {
 
       {modal === 'claim' && <ClaimModal id={id} onClose={() => setModal('')} onDone={() => { setModal(''); load(); }} />}
       {modal === 'report' && <ReportModal id={id} reasons={reasons} onClose={() => setModal('')} />}
+      {modal === 'edit' && <EditModal id={id} item={item} meta={meta} onClose={() => setModal('')} onDone={() => { setModal(''); load(); }} />}
     </div>
   );
 }
@@ -145,6 +180,47 @@ function ReportModal({ id, reasons, onClose }) {
           <button className="btn">Send report</button>
         </form>
       )}
+    </Modal>
+  );
+}
+
+function EditModal({ id, item, meta, onClose, onDone }) {
+  const [f, setF] = useState({
+    name: item.name, category: item.category, location: item.location, color: item.color || '', brand: item.brand || '',
+    date: String(item.date).slice(0, 10), description: item.description || '', additional: item.additional || '',
+  });
+  const [file, setFile] = useState(null);
+  const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const submit = async (e) => {
+    e.preventDefault(); setBusy(true); setErr('');
+    try {
+      const form = new FormData();
+      Object.entries(f).forEach(([k, v]) => form.append(k, v));
+      if (file) form.append('image', file);
+      await api(`/items/${id}`, { method: 'PUT', form });
+      onDone();
+    } catch (e2) { setErr(e2.message); setBusy(false); }
+  };
+  return (
+    <Modal title="Edit listing" onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <label>Item name<input required value={f.name} onChange={set('name')} /></label>
+        <div className="two">
+          <label>Category<select required value={f.category} onChange={set('category')}>{meta.categories.map((c) => <option key={c}>{c}</option>)}</select></label>
+          <label>Location<select required value={f.location} onChange={set('location')}>{meta.locations.map((c) => <option key={c}>{c}</option>)}</select></label>
+        </div>
+        <div className="two">
+          <label>Colour<input value={f.color} onChange={set('color')} /></label>
+          <label>Brand<input value={f.brand} onChange={set('brand')} /></label>
+        </div>
+        <label>Date<input type="date" required max={new Date().toISOString().slice(0, 10)} value={f.date} onChange={set('date')} /></label>
+        <label>Description<textarea rows="3" value={f.description} onChange={set('description')} /></label>
+        <label>Additional details<textarea rows="2" value={f.additional} onChange={set('additional')} /></label>
+        <label>Replace photo (optional)<input type="file" accept="image/*" onChange={(e) => setFile(e.target.files[0] || null)} /></label>
+        {err && <p className="error">{err}</p>}
+        <button className="btn" disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button>
+      </form>
     </Modal>
   );
 }

@@ -6,6 +6,7 @@ import App from './App.jsx';
 import { AuthProvider } from './AuthContext.jsx';
 import './styles.css';
 import './dark.css';
+import './polish.css';
 
 try { document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'); } catch { /* ignore */ }
 

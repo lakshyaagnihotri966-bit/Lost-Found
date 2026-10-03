@@ -3,6 +3,7 @@ const QRCode = require('qrcode');
 const Item = require('../models/Item');
 const Claim = require('../models/Claim');
 const Report = require('../models/Report');
+const User = require('../models/User');
 const Match = require('../models/Match');
 const { auth, optionalAuth } = require('../middleware/auth');
 const { upload, saveImage } = require('../utils/upload');
@@ -97,7 +98,29 @@ router.get('/:id', optionalAuth, wrap(async (req, res) => {
   delete o.reporter;
   let myClaim = null;
   if (req.user) myClaim = await Claim.findOne({ item: item._id, claimant: req.user._id }).sort('-createdAt').select('status');
-  res.json({ item: o, isOwner, myClaim });
+  // Logged-in users get the poster's name and WhatsApp number so they can contact them directly
+  let contact = null;
+  if (req.user && !isOwner) {
+    const r = await User.findById(item.reporter).select('name phone');
+    if (r) contact = { name: r.name, phone: r.phone || '' };
+  }
+  res.json({ item: o, isOwner, myClaim, contact });
+}));
+
+// Edit a listing (owner or admin). Image is optional; leaving it out keeps the old photo.
+router.put('/:id', auth, upload.single('image'), wrap(async (req, res) => {
+  const item = await Item.findById(req.params.id);
+  if (!item) return res.status(404).json({ message: 'Item not found' });
+  if (!isAdmin(req.user) && !item.reporter.equals(req.user._id)) return res.status(403).json({ message: 'Not allowed' });
+  const b = req.body;
+  if (b.name !== undefined) { if (!String(b.name).trim()) return res.status(400).json({ message: 'Name is required' }); item.name = b.name.trim(); }
+  if (b.category !== undefined) { if (!CATEGORIES.includes(b.category)) return res.status(400).json({ message: 'Invalid category' }); item.category = b.category; }
+  if (b.location !== undefined) { if (!LOCATIONS.includes(b.location)) return res.status(400).json({ message: 'Invalid location' }); item.location = b.location; }
+  if (b.date) { const d = new Date(b.date); if (isNaN(d)) return res.status(400).json({ message: 'Invalid date' }); item.date = d; }
+  for (const k of ['description', 'color', 'brand', 'additional']) if (b[k] !== undefined) item[k] = b[k];
+  if (req.file) item.imageUrl = await saveImage(req.file);
+  await item.save();
+  res.json({ item });
 }));
 
 router.patch('/:id/recover', auth, wrap(async (req, res) => {
