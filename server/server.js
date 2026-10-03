@@ -7,7 +7,19 @@ const connectDB = require('./config/db');
 if (!process.env.JWT_SECRET) { console.error('JWT_SECRET is missing in server/.env'); process.exit(1); }
 
 const app = express();
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
+
+// Allowed website addresses (CLIENT_URL can hold several, comma separated). Trailing slashes are ignored.
+const clean = (s) => s.trim().replace(/\/+$/, '');
+const allowed = [
+  ...(process.env.CLIENT_URL || '').split(',').map(clean),
+  'https://lost-found-mpgi.onrender.com',
+  'http://localhost:5173',
+].filter(Boolean);
+app.use(cors({
+  origin: (origin, cb) => cb(null, !origin || allowed.includes(origin)),
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
