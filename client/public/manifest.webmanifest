@@ -1,0 +1,21 @@
+{
+  "name": "MPGI Lost & Found",
+  "short_name": "Lost & Found",
+  "description": "Report, match and recover lost belongings on the MPGI campus.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f8fe",
+  "theme_color": "#012f8b",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Report lost item", "url": "/report/lost" },
+    { "name": "Report found item", "url": "/report/found" },
+    { "name": "Browse items", "url": "/browse" }
+  ]
+}

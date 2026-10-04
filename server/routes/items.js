@@ -16,6 +16,14 @@ const { CATEGORIES, LOCATIONS } = require('../constants');
 const rx = (s) => new RegExp(String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
 const isAdmin = (u) => u && u.role === 'admin';
 
+// Address the QR code should open: the site the user is on, never localhost in production
+function siteUrl(req) {
+  try { const o = new URL(String(req.query.origin || '')); if (/^https?:$/.test(o.protocol)) return o.origin; } catch { /* ignore */ }
+  const c = (process.env.CLIENT_URL || '').split(',')[0].trim().replace(/\/+$/, '');
+  if (c && !/localhost|127\.0\.0\.1/.test(c)) return c;
+  return `${req.protocol}://${req.get('host')}`;
+}
+
 router.get('/meta', (req, res) => res.json({ categories: CATEGORIES, locations: LOCATIONS, reportReasons: require('../constants').REPORT_REASONS }));
 
 router.get('/stats', wrap(async (req, res) => {
@@ -84,7 +92,7 @@ router.post('/', auth, upload.single('image'), wrap(async (req, res) => {
 router.get('/:id/qr', wrap(async (req, res) => {
   const item = await Item.findById(req.params.id);
   if (!item || item.type !== 'found') return res.status(404).json({ message: 'Found item not found' });
-  const url = `${process.env.CLIENT_URL || 'http://localhost:5173'}/item/${item._id}`;
+  const url = `${siteUrl(req)}/item/${item._id}`;
   const qr = await QRCode.toDataURL(url, { width: 320, margin: 2, color: { dark: '#012F8B', light: '#FFFFFF' } });
   res.json({ qr, url });
 }));

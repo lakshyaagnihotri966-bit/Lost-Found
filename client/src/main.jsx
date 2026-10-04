@@ -7,10 +7,17 @@ import { AuthProvider } from './AuthContext.jsx';
 import './styles.css';
 import './dark.css';
 import './polish.css';
+import './theme.css';
+import './anim.css';
+import './mobile.css';
 
 try { document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'); } catch { /* ignore */ }
 
 const GOOGLE_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '57285893340-mol4ke4n4eri603382tqtmvbk8n4vpen.apps.googleusercontent.com';
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}
 
 createRoot(document.getElementById('root')).render(
   <GoogleOAuthProvider clientId={GOOGLE_ID}>

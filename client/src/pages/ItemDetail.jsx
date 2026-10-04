@@ -22,7 +22,7 @@ export default function ItemDetail() {
   useEffect(() => { load(); setQr(null); }, [id, user]);
   useEffect(() => { getMeta().then((m) => { setReasons(m.reportReasons || []); setMeta(m); }); }, []);
   useEffect(() => {
-    if (data?.item.type === 'found') api(`/items/${id}/qr`).then(setQr).catch(() => {});
+    if (data?.item.type === 'found') api(`/items/${id}/qr?origin=${encodeURIComponent(window.location.origin)}`).then(setQr).catch(() => {});
   }, [data?.item.type, id]);
 
   if (err) return <div className="wrap page"><h1>Item not found</h1><p className="muted">{err}</p><Link to="/browse">Browse items</Link></div>;

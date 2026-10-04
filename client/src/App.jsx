@@ -10,6 +10,10 @@ import Dashboard from './pages/Dashboard.jsx';
 import Admin from './pages/Admin.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import PhoneGate from './PhoneGate.jsx';
+import Background from './Background.jsx';
+import ErrorBoundary from './ErrorBoundary.jsx';
+import MobileNav from './MobileNav.jsx';
+import InstallButton from './InstallButton.jsx';
 
 function Navbar() {
   const { user, logout, unread } = useAuth();
@@ -25,6 +29,7 @@ function Navbar() {
           <NavLink to="/report/lost">Report lost</NavLink>
           <NavLink to="/report/found">Report found</NavLink>
           <ThemeToggle />
+          <InstallButton />
           {user ? (
             <>
               <NavLink to="/dashboard">Dashboard{unread > 0 && <span className="dot">{unread}</span>}</NavLink>
@@ -53,11 +58,14 @@ export function Protected({ children, admin }) {
 }
 
 export default function App() {
+  const loc = useLocation();
   return (
     <>
+      <Background />
       <Navbar />
       <PhoneGate />
       <main>
+        <ErrorBoundary key={loc.pathname}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Auth mode="login" />} />
@@ -69,6 +77,7 @@ export default function App() {
           <Route path="/admin" element={<Protected admin><Admin /></Protected>} />
           <Route path="*" element={<div className="wrap page"><h1>Page not found</h1><Link to="/">Back to home</Link></div>} />
         </Routes>
+        </ErrorBoundary>
       </main>
       <footer className="foot">
         <svg className="foot-wave" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true"><path d="M0 60 C 360 0, 900 10, 1440 50 L1440 60 Z" fill="#5aa327" /></svg>
@@ -77,6 +86,7 @@ export default function App() {
           <p>MPGI Campus Lost &amp; Found, a service of Maharana Pratap Group of Institutions.<br />Report it. Match it. Claim it. Recover it.</p>
         </div>
       </footer>
+      <MobileNav />
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { api, fmtDate } from '../api';
 import { useAuth } from '../AuthContext.jsx';
@@ -17,14 +17,17 @@ export default function Admin() {
   const [sel, setSel] = useState([]);
   const [newAdmin, setNewAdmin] = useState('');
 
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+
   const load = useCallback(async () => {
     setErr('');
     try {
-      if (tab === 'overview') setD(await api('/admin/stats'));
-      else if (tab === 'users') setD(await api('/admin/users'));
-      else if (tab === 'claims') setD(await api('/admin/claims'));
-      else if (tab === 'reports') setD(await api('/reports'));
-      else setD(await api(`/admin/items?type=${tab}`));
+      const path = tab === 'overview' ? '/admin/stats' : tab === 'users' ? '/admin/users' : tab === 'claims' ? '/admin/claims'
+        : tab === 'reports' ? '/reports' : `/admin/items?type=${tab}`;
+      const r = await api(path);
+      // Only show data that belongs to the tab being viewed (this was the cause of the crash)
+      if (tabRef.current === tab) setD({ ...r, _tab: tab });
     } catch (e) { setErr(e.message); }
   }, [tab]);
   useEffect(() => { setD(null); setSel([]); setQ(''); setStatus(''); setOk(''); load(); }, [load]);
@@ -53,7 +56,7 @@ export default function Admin() {
       <div className="tabs">{TABS.map(([k, l]) => <button key={k} className={tab === k ? 'tab on' : 'tab'} onClick={() => setTab(k)}>{l}</button>)}</div>
       {err && <p className="error">{err}</p>}
       {ok && <p className="ok">{ok}</p>}
-      {!d ? <p className="muted">Loading…</p> : (
+      {!d || d._tab !== tab ? <p className="muted">Loading…</p> : (
         <>
           {tab === 'overview' && (
             <>
@@ -82,14 +85,14 @@ export default function Admin() {
                   <button className="btn sm">Add admin</button>
                 </form>
               </div>
-              <div className="table-wrap"><table>
+              <div className="table-wrap stack"><table>
                 <thead><tr><th>Name</th><th>Email</th><th>WhatsApp</th><th>Role</th><th>Listings</th><th>Joined</th><th></th></tr></thead>
                 <tbody>{users.length === 0 ? <tr><td colSpan="7" className="muted">No users found.</td></tr> : users.map((u) => (
                   <tr key={u._id}>
-                    <td>{u.name}</td><td>{u.email}</td><td>{u.phone ? `+${u.phone}` : '-'}</td>
-                    <td><Badge type={u.role === 'admin' ? 'approved' : 'active'}>{u.role}</Badge>{u.isSuper && <span className="muted small"> permanent</span>}</td>
-                    <td>{u.itemCount}</td><td>{fmtDate(u.createdAt)}</td>
-                    <td className="actions">
+                    <td data-label="Name">{u.name}</td><td data-label="Email">{u.email}</td><td data-label="WhatsApp">{u.phone ? `+${u.phone}` : '-'}</td>
+                    <td data-label="Role"><Badge type={u.role === 'admin' ? 'approved' : 'active'}>{u.role}</Badge>{u.isSuper && <span className="muted small"> permanent</span>}</td>
+                    <td data-label="Listings">{u.itemCount}</td><td data-label="Joined">{fmtDate(u.createdAt)}</td>
+                    <td className="actions" data-label="">
                       {u._id !== me.id && !u.isSuper && <>
                         <button className="btn ghost sm" onClick={() => setRole(u)}>{u.role === 'admin' ? 'Remove admin' : 'Make admin'}</button>
                         <button className="btn danger sm" onClick={() => delUser(u)}>Delete</button>
@@ -105,6 +108,7 @@ export default function Admin() {
               <div className="toolbar">
                 <input placeholder="Search item, category, place or user" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search items" />
                 <select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status"><option value="">All statuses</option><option value="active">Active</option><option value="recovered">Recovered</option></select>
+                <button className="btn ghost sm" onClick={toggleAll}>{allSelected ? 'Unselect all' : 'Select all'}</button>
               </div>
               {sel.length > 0 && (
                 <div className="card toolbar bulk">
@@ -113,16 +117,16 @@ export default function Admin() {
                   <button className="btn ghost sm" onClick={() => setSel([])}>Clear</button>
                 </div>
               )}
-              <div className="table-wrap"><table>
+              <div className="table-wrap stack"><table>
                 <thead><tr><th><input type="checkbox" className="chk" checked={allSelected} onChange={toggleAll} aria-label="Select all" /></th><th>Item</th><th>Category</th><th>Location</th><th>By</th><th>Date</th><th>Status</th><th></th></tr></thead>
                 <tbody>{items.length === 0 ? <tr><td colSpan="8" className="muted">No items.</td></tr> : items.map((i) => (
                   <tr key={i._id}>
-                    <td><input type="checkbox" className="chk" checked={sel.includes(i._id)} onChange={() => toggle(i._id)} aria-label={`Select ${i.name}`} /></td>
-                    <td><Link to={`/item/${i._id}`}>{i.name}</Link></td><td>{i.category}</td><td>{i.location}</td>
-                    <td>{i.reporter?.name}<br /><span className="muted small">{i.reporter?.email}</span></td>
-                    <td>{fmtDate(i.date)}</td>
-                    <td><Badge type={i.status === 'recovered' ? 'recovered' : 'active'}>{i.status}</Badge></td>
-                    <td className="actions">
+                    <td data-label="Select"><input type="checkbox" className="chk" checked={sel.includes(i._id)} onChange={() => toggle(i._id)} aria-label={`Select ${i.name}`} /></td>
+                    <td data-label="Item"><Link to={`/item/${i._id}`}>{i.name}</Link></td><td data-label="Category">{i.category}</td><td data-label="Location">{i.location}</td>
+                    <td data-label="By">{i.reporter?.name}<br /><span className="muted small">{i.reporter?.email}</span></td>
+                    <td data-label="Date">{fmtDate(i.date)}</td>
+                    <td data-label="Status"><Badge type={i.status === 'recovered' ? 'recovered' : 'active'}>{i.status}</Badge></td>
+                    <td className="actions" data-label="">
                       {i.status !== 'recovered' && <button className="btn ghost sm" onClick={() => run(() => api(`/items/${i._id}/recover`, { method: 'PATCH' }), 'Marked recovered')}>Mark recovered</button>}
                       <button className="btn danger sm" onClick={() => del(i._id)}>Delete</button>
                     </td>

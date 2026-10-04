@@ -2,11 +2,13 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const connectDB = require('./config/db');
 
 if (!process.env.JWT_SECRET) { console.error('JWT_SECRET is missing in server/.env'); process.exit(1); }
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Allowed website addresses (CLIENT_URL can hold several, comma separated). Trailing slashes are ignored.
 const clean = (s) => s.trim().replace(/\/+$/, '');
@@ -14,6 +16,7 @@ const allowed = [
   ...(process.env.CLIENT_URL || '').split(',').map(clean),
   'https://lost-found-mpgi.onrender.com',
   'http://localhost:5173',
+  process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : '',
 ].filter(Boolean);
 app.use(cors({
   origin: (origin, cb) => cb(null, !origin || allowed.includes(origin)),
@@ -30,6 +33,16 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/admin', require('./routes/admin'));
 app.get('/api/health', (req, res) => res.json({ ok: true }));
+
+// Serve the built website from the same server (one Railway service for everything)
+const dist = path.join(__dirname, '..', 'client', 'dist');
+if (fs.existsSync(path.join(dist, 'index.html'))) {
+  app.use(express.static(dist, {
+    maxAge: '7d',
+    setHeaders: (res, p) => { if (/(sw\.js|index\.html|manifest\.webmanifest)$/.test(p)) res.setHeader('Cache-Control', 'no-cache'); },
+  }));
+  app.get(/^\/(?!api|uploads).*/, (req, res) => res.sendFile(path.join(dist, 'index.html')));
+}
 
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));
 app.use((err, req, res, next) => {

@@ -5,21 +5,27 @@ export function Badge({ type, children }) {
   return <span className={`badge ${type}`}>{children || type}</span>;
 }
 
+function ago(d) {
+  const days = Math.floor((Date.now() - new Date(d)) / 86400000);
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 8) return `${days} days ago`;
+  return fmtDate(d);
+}
+
 export function ItemCard({ item, score }) {
   return (
     <Link to={`/item/${item._id}`} className={`card item ${item.type}`}>
-      <span className="hole" />
       <div className="thumb">
-        {item.imageUrl ? <img src={item.imageUrl} alt={item.name} loading="lazy" /> : <div className="noimg">No photo</div>}
+        {item.imageUrl ? <img src={item.imageUrl} alt={item.name} loading="lazy" /> : <div className="noimg"><span>{item.type === 'lost' ? '🔍' : '🎁'}</span>No photo</div>}
+        <span className={`tag ${item.type}`}>{item.type === 'lost' ? 'Lost' : 'Found'}</span>
+        {score != null && <span className="score on-img">{score}% match</span>}
+        {item.status === 'recovered' && <span className="rec">Recovered</span>}
       </div>
       <div className="card-body">
-        <div className="row">
-          <Badge type={item.type}>{item.type === 'lost' ? 'Lost' : 'Found'}</Badge>
-          {score != null && <span className="score">{score}% match</span>}
-        </div>
         <h3>{item.name}</h3>
-        <p className="muted small">{item.category} · {item.location}</p>
-        <p className="muted small">{fmtDate(item.date)}</p>
+        <p className="meta">📍 {item.location}</p>
+        <p className="meta">🕒 {ago(item.date)} · {item.category}</p>
       </div>
     </Link>
   );

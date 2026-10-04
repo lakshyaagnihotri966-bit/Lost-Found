@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api, getMeta } from '../api';
 import { ItemCard } from '../components.jsx';
 
 const empty = { q: '', type: '', category: '', location: '', color: '', brand: '', date: '' };
 
 export default function Browse() {
-  const [f, setF] = useState(empty);
+  const [sp] = useSearchParams();
+  const [f, setF] = useState({ ...empty, q: sp.get('q') || '', category: sp.get('category') || '', type: sp.get('type') || '' });
   const [meta, setMeta] = useState({ categories: [], locations: [] });
   const [items, setItems] = useState(null);
   const [err, setErr] = useState('');
@@ -34,7 +36,7 @@ export default function Browse() {
         <button className="btn ghost" onClick={() => setF(empty)}>Clear filters</button>
       </div>
       {err && <p className="error">{err}</p>}
-      {items === null ? <p className="muted">Loading…</p> : items.length === 0 ? (
+      {items === null ? <div className="grid">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="card item skel" />)}</div> : items.length === 0 ? (
         <p className="muted empty">No items match these filters. Try fewer filters, or report your item so we can match it later.</p>
       ) : (
         <div className="grid">{items.map((i) => <ItemCard key={i._id} item={i} />)}</div>
