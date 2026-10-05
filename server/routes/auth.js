@@ -7,7 +7,7 @@ const { auth } = require('../middleware/auth');
 const wrap = require('../utils/wrap');
 const { isSuperAdmin } = require('../utils/admins');
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '57285893340-mol4ke4n4eri603382tqtmvbk8n4vpen.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '57285893340-npu31k89q8nn97ph6dmqohbsqi6eualj.apps.googleusercontent.com';
 const gClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 const sign = (u) => jwt.sign({ id: u._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
