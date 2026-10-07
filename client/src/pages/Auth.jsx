@@ -27,26 +27,42 @@ export default function Auth({ mode }) {
   };
 
   return (
-    <div className="wrap page narrow">
-      <h1>{reg ? 'Create your account' : 'Log in'}</h1>
-      <div className="card form">
-        <p className="muted">{reg ? 'Sign up with your Google (Gmail) account. No password to remember.' : 'Continue with your Google (Gmail) account.'}</p>
-        <div className="row" style={{ justifyContent: 'center' }}>
-          <GoogleLogin onSuccess={google} onError={() => setErr('Google login failed. Please try again.')} text={reg ? 'signup_with' : 'signin_with'} shape="pill" size="large" />
+    <div className="wrap page">
+      <div className="auth-shell">
+        <aside className="auth-side">
+          <img src="/logo.png" alt="MPGI" />
+          <div>
+            <h2>Every lost item has a way home.</h2>
+            <p>Sign in once and report, match and claim belongings across the MPGI campus.</p>
+          </div>
+          <ul>
+            <li>Sign in with your Google account, no new password</li>
+            <li>Get alerted when something matches your report</li>
+            <li>Contact the finder or owner on WhatsApp</li>
+          </ul>
+        </aside>
+        <div className="auth-main">
+          <div>
+            <h1>{reg ? 'Create your account' : 'Welcome back'}</h1>
+            <p className="muted">{reg ? 'Sign up with your Google (Gmail) account.' : 'Continue with your Google (Gmail) account.'}</p>
+          </div>
+          <div className="row">
+            <GoogleLogin onSuccess={google} onError={() => setErr('Google login failed. Please try again.')} text={reg ? 'signup_with' : 'signin_with'} shape="rectangular" size="large" />
+          </div>
+          {busy && <p className="muted small">Please wait…</p>}
+          {err && <p className="error">{err}</p>}
+          <p className="muted small">{reg ? <>Already registered? <Link to="/login">Log in</Link></> : <>New here? <Link to="/register">Create an account</Link></>}</p>
+          <div className="auth-or">Admin access</div>
+          {!admin ? (
+            <button type="button" className="btn ghost sm" onClick={() => setAdmin(true)}>Admin login</button>
+          ) : (
+            <form className="form" style={{ margin: 0 }} onSubmit={submit}>
+              <label>Email<input type="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} autoComplete="email" /></label>
+              <label>Password<input type="password" required value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="current-password" /></label>
+              <button className="btn" disabled={busy}>Log in as admin</button>
+            </form>
+          )}
         </div>
-        {busy && <p className="muted small center">Please wait…</p>}
-        {err && <p className="error">{err}</p>}
-        <p className="muted small">{reg ? <>Already registered? <Link to="/login">Log in</Link></> : <>New here? <Link to="/register">Create an account</Link></>}</p>
-        <hr style={{ border: 0, borderTop: '1px solid var(--line)', width: '100%' }} />
-        {!admin ? (
-          <button type="button" className="btn ghost sm" onClick={() => setAdmin(true)}>Admin login</button>
-        ) : (
-          <form className="form" onSubmit={submit}>
-            <label>Email<input type="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} autoComplete="email" /></label>
-            <label>Password<input type="password" required value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="current-password" /></label>
-            <button className="btn" disabled={busy}>Log in as admin</button>
-          </form>
-        )}
       </div>
     </div>
   );

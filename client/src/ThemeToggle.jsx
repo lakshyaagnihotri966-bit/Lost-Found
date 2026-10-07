@@ -7,8 +7,8 @@ export default function ThemeToggle() {
     try { localStorage.setItem('theme', t); } catch { /* ignore */ }
   }, [t]);
   return (
-    <button type="button" className="btn ghost sm" aria-label="Toggle dark theme" onClick={() => setT(t === 'dark' ? 'light' : 'dark')}>
-      {t === 'dark' ? '☀️ Light' : '🌙 Dark'}
+    <button type="button" className="icon-btn" title={t === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} aria-label="Toggle dark theme" onClick={() => setT(t === 'dark' ? 'light' : 'dark')}>
+      {t === 'dark' ? '☀️' : '🌙'}
     </button>
   );
 }

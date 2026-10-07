@@ -24,7 +24,7 @@ export default function Browse() {
 
   return (
     <div className="wrap page">
-      <h1>Browse items</h1>
+      <div className="page-head"><h1>Browse items</h1><p>Everything reported on campus. See something that looks like yours? Open it and contact the finder.</p></div>
       <div className="filters card">
         <input placeholder="Search by name or keyword" value={f.q} onChange={set('q')} aria-label="Search" />
         <select value={f.type} onChange={set('type')} aria-label="Lost or found"><option value="">Lost &amp; found</option><option value="lost">Lost</option><option value="found">Found</option></select>

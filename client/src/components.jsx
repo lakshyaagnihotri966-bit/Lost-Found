@@ -23,9 +23,9 @@ export function ItemCard({ item, score }) {
         {item.status === 'recovered' && <span className="rec">Recovered</span>}
       </div>
       <div className="card-body">
+        <p className="cat-line">{item.category}</p>
         <h3>{item.name}</h3>
-        <p className="meta">📍 {item.location}</p>
-        <p className="meta">🕒 {ago(item.date)} · {item.category}</p>
+        <p className="meta"><span>{item.location}</span><span>{ago(item.date)}</span></p>
       </div>
     </Link>
   );

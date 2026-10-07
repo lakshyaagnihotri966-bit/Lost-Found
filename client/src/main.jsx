@@ -5,11 +5,6 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import App from './App.jsx';
 import { AuthProvider } from './AuthContext.jsx';
 import './styles.css';
-import './dark.css';
-import './polish.css';
-import './theme.css';
-import './anim.css';
-import './mobile.css';
 
 try { document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'); } catch { /* ignore */ }
 

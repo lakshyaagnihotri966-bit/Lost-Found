@@ -1,5 +1,5 @@
 import { Routes, Route, Link, NavLink, Navigate, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext.jsx';
 import Home from './pages/Home.jsx';
 import Auth from './pages/Auth.jsx';
@@ -15,37 +15,55 @@ import ErrorBoundary from './ErrorBoundary.jsx';
 import MobileNav from './MobileNav.jsx';
 import InstallButton from './InstallButton.jsx';
 
+function Avatar({ user }) {
+  return <span className="avatar">{user.avatar ? <img src={user.avatar} alt="" referrerPolicy="no-referrer" /> : (user.name || '?').charAt(0).toUpperCase()}</span>;
+}
+
 function Navbar() {
   const { user, logout, unread } = useAuth();
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const f = () => setScrolled(window.scrollY > 8);
+    f(); window.addEventListener('scroll', f, { passive: true });
+    return () => window.removeEventListener('scroll', f);
+  }, []);
   const close = () => setOpen(false);
   return (
-    <header className="nav">
+    <header className={scrolled ? 'nav scrolled' : 'nav'}>
       <div className="wrap nav-in">
         <Link to="/" className="brand" onClick={close} aria-label="MPGI Lost & Found home"><img src="/logo.png" alt="MPGI - blend of fine education" /><span className="brand-sub">Lost &amp; Found</span></Link>
-        <button className="burger" aria-label="Menu" onClick={() => setOpen(!open)}>☰</button>
+        <button className="burger" aria-label="Menu" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? '✕' : '☰'}</button>
         <nav className={open ? 'links open' : 'links'} onClick={close}>
           <NavLink to="/browse">Browse</NavLink>
           <NavLink to="/report/lost">Report lost</NavLink>
           <NavLink to="/report/found">Report found</NavLink>
+          <span className="sep" />
           <ThemeToggle />
           <InstallButton />
           {user ? (
             <>
               <NavLink to="/dashboard">Dashboard{unread > 0 && <span className="dot">{unread}</span>}</NavLink>
               {user.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
+              <Avatar user={user} />
               <button className="btn ghost sm" onClick={logout}>Log out</button>
             </>
           ) : (
             <>
               <NavLink to="/login">Log in</NavLink>
-              <Link className="btn sm" to="/register">Register</Link>
+              <Link className="btn sm" to="/register">Get started</Link>
             </>
           )}
         </nav>
       </div>
     </header>
   );
+}
+
+function ScrollTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
 }
 
 export function Protected({ children, admin }) {
@@ -62,6 +80,7 @@ export default function App() {
   return (
     <>
       <Background />
+      <ScrollTop />
       <Navbar />
       <PhoneGate />
       <main>
@@ -80,11 +99,15 @@ export default function App() {
         </ErrorBoundary>
       </main>
       <footer className="foot">
-        <svg className="foot-wave" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true"><path d="M0 60 C 360 0, 900 10, 1440 50 L1440 60 Z" fill="#5aa327" /></svg>
         <div className="wrap foot-in">
-          <img src="/logo.png" alt="MPGI" className="foot-logo" />
-          <p>MPGI Campus Lost &amp; Found, a service of Maharana Pratap Group of Institutions.<br />Report it. Match it. Claim it. Recover it.</p>
+          <div>
+            <img src="/logo.png" alt="MPGI" className="foot-logo" />
+            <p>MPGI Campus Lost &amp; Found, a service of Maharana Pratap Group of Institutions. Report it. Match it. Claim it. Recover it.</p>
+          </div>
+          <div><h4>Explore</h4><ul><li><Link to="/browse">Browse items</Link></li><li><Link to="/report/lost">Report a lost item</Link></li><li><Link to="/report/found">Report a found item</Link></li></ul></div>
+          <div><h4>Account</h4><ul><li><Link to="/dashboard">Dashboard</Link></li><li><Link to="/login">Log in</Link></li></ul></div>
         </div>
+        <div className="foot-bar"><div className="wrap"><span>Maharana Pratap Group of Institutions, Kanpur</span><span>Built for the MPGI community</span></div></div>
       </footer>
       <MobileNav />
     </>
