@@ -4,6 +4,7 @@ import { api, getMeta, fmtDate } from '../api';
 import { useAuth } from '../AuthContext.jsx';
 import { Badge, Modal } from '../components.jsx';
 import { waLink } from '../whatsapp';
+import Icon, { CATEGORY_ICON } from '../Icons.jsx';
 
 export default function ItemDetail() {
   const { id } = useParams();
@@ -20,16 +21,17 @@ export default function ItemDetail() {
 
   const load = () => api(`/items/${id}`).then(setData).catch((e) => setErr(e.message));
   useEffect(() => { load(); setQr(null); }, [id, user]);
-  useEffect(() => { getMeta().then((m) => { setReasons(m.reportReasons || []); setMeta(m); }); }, []);
+  useEffect(() => { getMeta().then((m) => { setReasons(m.reportReasons || []); setMeta(m); }).catch(() => {}); }, []);
   useEffect(() => {
     if (data?.item.type === 'found') api(`/items/${id}/qr?origin=${encodeURIComponent(window.location.origin)}`).then(setQr).catch(() => {});
   }, [data?.item.type, id]);
 
-  if (err) return <div className="wrap page"><h1>Item not found</h1><p className="muted">{err}</p><Link to="/browse">Browse items</Link></div>;
-  if (!data) return <div className="wrap page muted">Loading…</div>;
+  if (err) return <div className="wrap page narrow center"><h1>Item not found</h1><p className="muted">{err}</p><Link className="btn" to="/browse">Browse items</Link></div>;
+  if (!data) return <div className="wrap page"><div className="detail"><div className="card item skel" style={{ height: 380 }} /><div className="card item skel" style={{ height: 380 }} /></div></div>;
   const { item, isOwner, myClaim, contact } = data;
   const found = item.type === 'found';
   const recovered = item.status === 'recovered';
+  const canManage = isOwner || user?.role === 'admin';
   const needLogin = () => nav('/login', { state: { from: `/item/${id}` } });
 
   const openModal = (m) => (user ? setModal(m) : needLogin());
@@ -44,75 +46,84 @@ export default function ItemDetail() {
   const act = async (fn) => { try { await fn(); await load(); } catch (e) { setMsg(e.message); } };
 
   return (
-    <div className="wrap page detail">
-      <div className="detail-img">
-        {item.imageUrl ? <img src={item.imageUrl} alt={item.name} /> : <div className="noimg big">No photo</div>}
-      </div>
-      <div>
-        <div className="row"><Badge type={item.type}>{found ? 'Found' : 'Lost'}</Badge><Badge type={recovered ? 'recovered' : 'active'}>{recovered ? 'Recovered' : 'Active'}</Badge></div>
-        <h1>{item.name}</h1>
-        <dl className="facts">
-          <div><dt>Category</dt><dd>{item.category}</dd></div>
-          <div><dt>{found ? 'Found at' : 'Lost at'}</dt><dd>{item.location}</dd></div>
-          <div><dt>Date</dt><dd>{fmtDate(item.date)}</dd></div>
-          {item.color && <div><dt>Colour</dt><dd>{item.color}</dd></div>}
-          {item.brand && <div><dt>Brand</dt><dd>{item.brand}</dd></div>}
-          <div><dt>Status</dt><dd>{recovered ? 'Recovered' : 'Still active'}</dd></div>
-        </dl>
-        {item.description && <p>{item.description}</p>}
-        {item.additional && <p className="muted">{item.additional}</p>}
-        {msg && <p className="error">{msg}</p>}
+    <div className="wrap page">
+      <nav className="crumbs" aria-label="Breadcrumb"><Link to="/browse">Browse</Link><span>/</span><span>{item.category}</span></nav>
+      <div className="detail">
+        <div className="detail-img">
+          {item.imageUrl
+            ? <img src={item.imageUrl} alt={item.name} />
+            : <div className="noimg big"><Icon name={CATEGORY_ICON[item.category] || 'grid'} size={54} /><span>No photo added</span></div>}
+        </div>
+        <div>
+          <div className="row"><Badge type={item.type}>{found ? 'Found' : 'Lost'}</Badge><Badge type={recovered ? 'recovered' : 'active'}>{recovered ? 'Recovered' : 'Active'}</Badge></div>
+          <h1>{item.name}</h1>
+          <dl className="facts">
+            <div><dt>Category</dt><dd>{item.category}</dd></div>
+            <div><dt>{found ? 'Found at' : 'Lost at'}</dt><dd>{item.location}</dd></div>
+            <div><dt>Date</dt><dd>{fmtDate(item.date)}</dd></div>
+            <div><dt>Status</dt><dd>{recovered ? 'Recovered' : 'Still active'}</dd></div>
+            {item.color && <div><dt>Colour</dt><dd>{item.color}</dd></div>}
+            {item.brand && <div><dt>Brand</dt><dd>{item.brand}</dd></div>}
+          </dl>
+          {item.description && <p>{item.description}</p>}
+          {item.additional && <p className="muted">{item.additional}</p>}
+          {msg && <p className="error">{msg}</p>}
 
-        <div className="cta">
-          {found && !recovered && !isOwner && (
-            myClaim?.status === 'pending'
-              ? <button className="btn" disabled>Claim pending review</button>
-              : <button className="btn" onClick={() => openModal('claim')}>Claim item</button>
+          <div className="cta">
+            {found && !recovered && !isOwner && (
+              myClaim?.status === 'pending'
+                ? <button className="btn" disabled>Claim pending review</button>
+                : <button className="btn big" onClick={() => openModal('claim')}><Icon name="shield" /> Claim this item</button>
+            )}
+            <button className="btn ghost" onClick={share}><Icon name="share" /> {copied ? 'Link copied' : 'Share'}</button>
+            {!isOwner && <button className="btn ghost" onClick={() => openModal('report')}><Icon name="flag" /> Report</button>}
+          </div>
+          {myClaim && <p className="muted small">Your claim: {myClaim.status}</p>}
+
+          {!isOwner && !recovered && (
+            <div className="card contact">
+              <h3>{found ? 'Is this yours?' : 'Did you find this?'}</h3>
+              {!user ? (
+                <p className="muted small">Log in with Google to see the contact number. <Link to="/login" state={{ from: `/item/${id}` }}>Log in</Link></p>
+              ) : contact?.phone ? (
+                <>
+                  <p className="muted small">Posted by {contact.name}. {found ? 'Message or call them to verify the item and collect it.' : 'Message or call them to return their item.'}</p>
+                  <div className="actions">
+                    <a className="btn wa" target="_blank" rel="noreferrer"
+                      href={waLink(contact.phone, found
+                        ? `Hi ${contact.name}, main ${user.name} hoon. MPGI Lost & Found par aapka found item "${item.name}" mera hai. Kahan aur kab mil sakte hain?`
+                        : `Hi ${contact.name}, main ${user.name} hoon. Aapka lost item "${item.name}" mujhe mila hai. Kahan aur kab return kar sakta hoon?`)}>
+                      <Icon name="chat" /> {found ? 'WhatsApp the finder' : 'I found this: WhatsApp owner'}
+                    </a>
+                    <a className="btn ghost" href={`tel:+${contact.phone}`}><Icon name="phone" /> Call</a>
+                  </div>
+                </>
+              ) : <p className="muted small">{contact?.name || 'The poster'} has not added a contact number yet.{found ? ' You can still use Claim this item.' : ''}</p>}
+            </div>
           )}
-          {!isOwner && <button className="btn ghost" onClick={() => openModal('report')}>Report listing</button>}
-          <button className="btn ghost" onClick={share}>{copied ? 'Link copied' : 'Share'}</button>
-          {(isOwner || user?.role === 'admin') && !recovered && <button className="btn ghost" onClick={() => setModal('edit')}>Edit</button>}
-          {(isOwner || user?.role === 'admin') && !recovered && (
-            <button className="btn ghost" onClick={() => act(() => api(`/items/${id}/recover`, { method: 'PATCH' }))}>Mark as recovered</button>
+
+          {canManage && (
+            <div className="card manage">
+              <h3>Manage listing</h3>
+              <div className="actions">
+                {!recovered && <button className="btn ghost sm" onClick={() => setModal('edit')}><Icon name="edit" /> Edit</button>}
+                {!recovered && <button className="btn ghost sm" onClick={() => act(() => api(`/items/${id}/recover`, { method: 'PATCH' }))}><Icon name="check" /> Mark as recovered</button>}
+                <button className="btn danger sm" onClick={() => { if (confirm('Delete this listing?')) act(async () => { await api(`/items/${id}`, { method: 'DELETE' }); nav('/dashboard'); }); }}><Icon name="trash" /> Delete</button>
+              </div>
+            </div>
           )}
-          {(isOwner || user?.role === 'admin') && (
-            <button className="btn danger" onClick={() => { if (confirm('Delete this listing?')) act(async () => { await api(`/items/${id}`, { method: 'DELETE' }); nav('/dashboard'); }); }}>Delete</button>
+
+          {qr && (
+            <div className="qr card">
+              <img src={qr.qr} alt="QR code for this item" width="120" height="120" />
+              <div>
+                <h3>QR code</h3>
+                <p className="muted small">Print it and attach it to the item or notice board. Scanning opens this page.</p>
+                <a className="btn ghost sm" href={qr.qr} download={`mpgi-found-${id}.png`}><Icon name="download" /> Download QR</a>
+              </div>
+            </div>
           )}
         </div>
-        {myClaim && <p className="muted small">Your claim: {myClaim.status}</p>}
-
-        {!isOwner && !recovered && (
-          <div className="card contact" style={{ marginTop: 18 }}>
-            <h3>{found ? 'Is this yours?' : 'Did you find this?'}</h3>
-            {!user ? (
-              <p className="muted small">Log in with Google to see the contact number. <Link to="/login" state={{ from: `/item/${id}` }}>Log in</Link></p>
-            ) : contact?.phone ? (
-              <>
-                <p className="muted small">Posted by {contact.name}. {found ? 'Message or call them to verify the item and collect it.' : 'Message or call them to return their item.'}</p>
-                <div className="actions">
-                  <a className="btn wa" target="_blank" rel="noreferrer"
-                    href={waLink(contact.phone, found
-                      ? `Hi ${contact.name}, main ${user.name} hoon. MPGI Lost & Found par aapka found item "${item.name}" mera hai. Kahan aur kab mil sakte hain?`
-                      : `Hi ${contact.name}, main ${user.name} hoon. Aapka lost item "${item.name}" mujhe mila hai. Kahan aur kab return kar sakta hoon?`)}>
-                    {found ? 'WhatsApp the finder' : 'I found this: WhatsApp owner'}
-                  </a>
-                  <a className="btn ghost" href={`tel:+${contact.phone}`}>Call +{contact.phone}</a>
-                </div>
-              </>
-            ) : <p className="muted small">{contact?.name || 'The poster'} has not added a contact number yet.{found ? ' You can still use Claim item above.' : ''}</p>}
-          </div>
-        )}
-
-        {qr && (
-          <div className="qr card">
-            <img src={qr.qr} alt="QR code for this item" width="140" height="140" />
-            <div>
-              <h3>QR code</h3>
-              <p className="muted small">Print it and attach it to the item or notice board. Scanning opens this public page.</p>
-              <a className="btn ghost sm" href={qr.qr} download={`mpgi-found-${id}.png`}>Download QR</a>
-            </div>
-          </div>
-        )}
       </div>
 
       {modal === 'claim' && <ClaimModal id={id} onClose={() => setModal('')} onDone={() => { setModal(''); load(); }} />}

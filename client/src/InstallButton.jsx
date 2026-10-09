@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import Icon from './Icons.jsx';
 
-// "Install app" button: uses the browser prompt on Android/desktop, shows a hint on iPhone.
+// "Install app": browser prompt on Android/desktop, a hint on iPhone.
 export default function InstallButton() {
   const [ev, setEv] = useState(null);
   useEffect(() => {
@@ -12,7 +13,10 @@ export default function InstallButton() {
   }, []);
   const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
   if (standalone) return null;
-  if (ev) return <button type="button" className="btn ghost sm" onClick={async () => { ev.prompt(); await ev.userChoice; setEv(null); }}>📲 Install app</button>;
-  if (/iphone|ipad|ipod/i.test(navigator.userAgent)) return <button type="button" className="btn ghost sm" onClick={() => alert('To install: tap the Share button, then "Add to Home Screen".')}>📲 Install app</button>;
-  return null;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (!ev && !ios) return null;
+  const click = async () => {
+    if (ev) { ev.prompt(); await ev.userChoice; setEv(null); } else alert('To install: tap the Share button, then "Add to Home Screen".');
+  };
+  return <button type="button" className="btn ghost sm" onClick={click}><Icon name="download" /> Install app</button>;
 }

@@ -33,10 +33,10 @@ export default function Auth({ mode }) {
           <img src="/logo.png" alt="MPGI" />
           <div>
             <h2>Every lost item has a way home.</h2>
-            <p>Sign in once and report, match and claim belongings across the MPGI campus.</p>
+            <p>Sign in once, then report, match and claim belongings across the MPGI campus.</p>
           </div>
           <ul>
-            <li>Sign in with your Google account, no new password</li>
+            <li>Sign in with Google, no new password to remember</li>
             <li>Get alerted when something matches your report</li>
             <li>Contact the finder or owner on WhatsApp</li>
           </ul>

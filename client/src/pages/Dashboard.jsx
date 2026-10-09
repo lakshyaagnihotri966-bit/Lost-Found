@@ -3,12 +3,44 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api, fmtDate } from '../api';
 import { useAuth } from '../AuthContext.jsx';
 import { waLink } from '../whatsapp';
-import { ItemCard, Badge } from '../components.jsx';
+import { ItemCard, Badge, EmptyState } from '../components.jsx';
+import Icon from '../Icons.jsx';
 
-const TABS = [['lost', 'My lost items'], ['found', 'My found items'], ['claims', 'My claims'], ['matches', 'Possible matches'], ['notifications', 'Notifications'], ['recovered', 'Recovered']];
+const TABS = [
+  ['lost', 'Lost items', 'flag'], ['found', 'Found items', 'check'], ['claims', 'Claims', 'shield'],
+  ['matches', 'Matches', 'sparkle'], ['notifications', 'Alerts', 'bell'], ['recovered', 'Recovered', 'home'],
+];
+
+function PhoneEditor({ user, updateUser }) {
+  const [edit, setEdit] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const save = async (e) => {
+    e.preventDefault(); setBusy(true); setErr('');
+    try { const d = await api('/auth/me', { method: 'PUT', body: { phone } }); updateUser(d.user); setEdit(false); }
+    catch (e2) { setErr(e2.message); } finally { setBusy(false); }
+  };
+  if (!edit) {
+    return (
+      <span className="phone-line">
+        <Icon name="phone" />{user.phone ? `+${user.phone}` : 'No WhatsApp number'}
+        <button type="button" className="linkbtn" onClick={() => { setPhone(user.phone || ''); setEdit(true); }}>{user.phone ? 'Change' : 'Add'}</button>
+      </span>
+    );
+  }
+  return (
+    <form className="phone-form" onSubmit={save}>
+      <input required type="tel" inputMode="tel" placeholder="9876543210" value={phone} onChange={(e) => setPhone(e.target.value)} aria-label="WhatsApp number" />
+      <button className="btn sm" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+      <button type="button" className="btn ghost sm" onClick={() => setEdit(false)}>Cancel</button>
+      {err && <span className="error small">{err}</span>}
+    </form>
+  );
+}
 
 export default function Dashboard() {
-  const { user, unread, refreshUnread } = useAuth();
+  const { user, unread, refreshUnread, updateUser } = useAuth();
   const [params, setParams] = useSearchParams();
   const tab = TABS.some(([k]) => k === params.get('tab')) ? params.get('tab') : 'lost';
   const [items, setItems] = useState([]);
@@ -17,6 +49,7 @@ export default function Dashboard() {
   const [matches, setMatches] = useState([]);
   const [notes, setNotes] = useState([]);
   const [err, setErr] = useState('');
+  const [ready, setReady] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -25,7 +58,7 @@ export default function Dashboard() {
       ]);
       setItems(i.items); setClaims(c.claims); setReceived(r.claims); setMatches(m.matches); setNotes(n.notifications);
       refreshUnread();
-    } catch (e) { setErr(e.message); }
+    } catch (e) { setErr(e.message); } finally { setReady(true); }
   }, [refreshUnread]);
   useEffect(() => { load(); }, [load]);
 
@@ -41,29 +74,44 @@ export default function Dashboard() {
   const pendingReceived = received.filter((c) => c.status === 'pending').length;
   const counts = { lost: lostItems.length, found: foundItems.length, claims: claims.length + pendingReceived, matches: matches.length, notifications: unread, recovered: recoveredItems.length + approved.length };
 
-  const grid = (list, emptyText, cta) => list.length
+  const grid = (list, title, text, cta) => (list.length
     ? <div className="grid">{list.map((i) => <ItemCard key={i._id} item={i} />)}</div>
-    : <p className="muted empty">{emptyText} {cta}</p>;
+    : <EmptyState title={title} text={text}>{cta}</EmptyState>);
 
   return (
     <div className="wrap page">
-      <h1>Hello, {user.name.split(' ')[0]}</h1>
-      <div className="tabs" role="tablist">
-        {TABS.map(([k, label]) => (
-          <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'tab on' : 'tab'} onClick={() => setParams({ tab: k })}>
-            {label}{counts[k] > 0 && <span className="count">{counts[k]}</span>}
+      <div className="dash-head">
+        <div className="who">
+          <span className="avatar lg">{user.avatar ? <img src={user.avatar} alt="" referrerPolicy="no-referrer" /> : (user.name || '?').charAt(0).toUpperCase()}</span>
+          <div>
+            <h1>Hello, {user.name.split(' ')[0]}</h1>
+            <p className="muted small">{user.email} · <PhoneEditor user={user} updateUser={updateUser} /></p>
+          </div>
+        </div>
+        <div className="row">
+          <Link className="btn lost-btn" to="/report/lost"><Icon name="plus" /> Report lost</Link>
+          <Link className="btn found-btn" to="/report/found"><Icon name="plus" /> Report found</Link>
+        </div>
+      </div>
+
+      <div className="dash-stats" role="tablist">
+        {TABS.map(([k, label, ic]) => (
+          <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'dstat on' : 'dstat'} onClick={() => setParams({ tab: k })}>
+            <span className="dstat-top"><Icon name={ic} />{k === 'notifications' && counts[k] > 0 && <i className="pulse" />}</span>
+            <b>{counts[k]}</b><span>{label}</span>
           </button>
         ))}
       </div>
       {err && <p className="error">{err}</p>}
+      {!ready && <div className="grid">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="card item skel" />)}</div>}
 
-      {tab === 'lost' && grid(lostItems, 'You have no active lost reports.', <Link to="/report/lost">Report a lost item</Link>)}
-      {tab === 'found' && grid(foundItems, 'You have no active found reports.', <Link to="/report/found">Report a found item</Link>)}
+      {ready && tab === 'lost' && grid(lostItems, 'No active lost reports', 'Report something you lost and we will start matching it right away.', <Link className="btn lost-btn" to="/report/lost">Report a lost item</Link>)}
+      {ready && tab === 'found' && grid(foundItems, 'No active found reports', 'Found something on campus? Post it so the owner can claim it.', <Link className="btn found-btn" to="/report/found">Report a found item</Link>)}
 
-      {tab === 'claims' && (
+      {ready && tab === 'claims' && (
         <>
-          <h2>Claims on items I found</h2>
-          {received.length === 0 ? <p className="muted empty">No one has claimed your found items yet.</p> : received.map((c) => (
+          <h2 className="sub-h">Claims on items I found</h2>
+          {received.length === 0 ? <EmptyState icon="shield" title="No claims yet" text="When someone claims an item you found, it shows up here for review." /> : received.map((c) => (
             <div className="card row-card" key={c._id}>
               <div className="grow">
                 <div className="row"><Link to={`/item/${c.item._id}`}><b>{c.item.name}</b></Link><Badge type={c.status}>{c.status}</Badge></div>
@@ -78,7 +126,7 @@ export default function Dashboard() {
                 {c.claimant?.phone && c.status !== 'rejected' && (
                   <a className="btn sm wa" target="_blank" rel="noreferrer"
                     href={waLink(c.claimant.phone, `Hi ${c.claimant.name}, aapne MPGI Lost & Found par "${c.item.name}" claim kiya hai. Main finder hoon. Kahan aur kab mil sakte hain?`)}>
-                    WhatsApp {c.claimant.name.split(' ')[0]}
+                    <Icon name="chat" /> WhatsApp {c.claimant.name.split(' ')[0]}
                   </a>
                 )}
                 {c.status === 'pending' && (
@@ -90,8 +138,8 @@ export default function Dashboard() {
               </div>
             </div>
           ))}
-          <h2>My claims</h2>
-          {claims.length === 0 ? <p className="muted empty">You have not claimed anything. Open a found item and choose Claim item.</p> : claims.map((c) => (
+          <h2 className="sub-h">My claims</h2>
+          {claims.length === 0 ? <EmptyState icon="shield" title="You have not claimed anything" text="Open a found item and choose Claim item." /> : claims.map((c) => (
             <div className="card row-card" key={c._id}>
               <div className="grow">
                 <Link to={`/item/${c.item?._id}`}><b>{c.item?.name}</b></Link>
@@ -101,7 +149,7 @@ export default function Dashboard() {
                 {c.poster?.phone && c.status !== 'rejected' && (
                   <a className="btn sm wa" target="_blank" rel="noreferrer"
                     href={waLink(c.poster.phone, `Hi ${c.poster.name}, main ${user.name} hoon. Maine MPGI Lost & Found par "${c.item?.name}" claim kiya hai. Kahan aur kab mil sakte hain?`)}>
-                    WhatsApp finder
+                    <Icon name="chat" /> WhatsApp finder
                   </a>
                 )}
                 <Badge type={c.status}>{c.status}</Badge>
@@ -111,14 +159,14 @@ export default function Dashboard() {
         </>
       )}
 
-      {tab === 'matches' && (matches.length === 0
-        ? <p className="muted empty">No possible matches yet. We check every new report against existing ones and notify you.</p>
+      {ready && tab === 'matches' && (matches.length === 0
+        ? <EmptyState icon="sparkle" title="No possible matches yet" text="We compare every new report with existing ones and notify you the moment something lines up." />
         : <div className="grid">{matches.map((m) => <ItemCard key={m._id} item={m.mine === 'lost' ? m.found : m.lost} score={m.score} />)}</div>)}
 
-      {tab === 'notifications' && (
+      {ready && tab === 'notifications' && (
         <>
-          <div className="row between"><h2>Notifications</h2>{unread > 0 && <button className="btn ghost sm" onClick={readAll}>Mark all as read</button>}</div>
-          {notes.length === 0 ? <p className="muted empty">Nothing yet.</p> : notes.map((n) => (
+          <div className="row between" style={{ marginBottom: 12 }}><h2 className="sub-h" style={{ margin: 0 }}>Alerts</h2>{unread > 0 && <button className="btn ghost sm" onClick={readAll}>Mark all as read</button>}</div>
+          {notes.length === 0 ? <EmptyState icon="bell" title="Nothing yet" text="Matches, claims and updates will appear here." /> : notes.map((n) => (
             <Link to={n.link} key={n._id} className={n.read ? 'note' : 'note unread'} onClick={() => api(`/notifications/${n._id}/read`, { method: 'PATCH' }).then(refreshUnread)}>
               <span>{n.message}</span><span className="muted small">{fmtDate(n.createdAt)}</span>
             </Link>
@@ -126,10 +174,10 @@ export default function Dashboard() {
         </>
       )}
 
-      {tab === 'recovered' && (
+      {ready && tab === 'recovered' && (
         <>
-          {grid(recoveredItems, 'None of your reports are recovered yet.')}
-          {approved.length > 0 && <><h2>Items I got back</h2>
+          {grid(recoveredItems, 'Nothing recovered yet', 'Items you reported that were returned will show up here.')}
+          {approved.length > 0 && <><h2 className="sub-h">Items I got back</h2>
             {approved.map((c) => <div className="card row-card" key={c._id}><Link to={`/item/${c.item?._id}`}><b>{c.item?.name}</b></Link><Badge type="approved">recovered</Badge></div>)}</>}
         </>
       )}

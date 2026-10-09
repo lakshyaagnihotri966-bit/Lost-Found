@@ -14,9 +14,14 @@ import Background from './Background.jsx';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import MobileNav from './MobileNav.jsx';
 import InstallButton from './InstallButton.jsx';
+import Icon from './Icons.jsx';
 
 function Avatar({ user }) {
-  return <span className="avatar">{user.avatar ? <img src={user.avatar} alt="" referrerPolicy="no-referrer" /> : (user.name || '?').charAt(0).toUpperCase()}</span>;
+  return (
+    <span className="avatar" title={user.email}>
+      {user.avatar ? <img src={user.avatar} alt="" referrerPolicy="no-referrer" /> : (user.name || '?').charAt(0).toUpperCase()}
+    </span>
+  );
 }
 
 function Navbar() {
@@ -25,15 +30,19 @@ function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const f = () => setScrolled(window.scrollY > 8);
-    f(); window.addEventListener('scroll', f, { passive: true });
+    f();
+    window.addEventListener('scroll', f, { passive: true });
     return () => window.removeEventListener('scroll', f);
   }, []);
   const close = () => setOpen(false);
   return (
     <header className={scrolled ? 'nav scrolled' : 'nav'}>
       <div className="wrap nav-in">
-        <Link to="/" className="brand" onClick={close} aria-label="MPGI Lost & Found home"><img src="/logo.png" alt="MPGI - blend of fine education" /><span className="brand-sub">Lost &amp; Found</span></Link>
-        <button className="burger" aria-label="Menu" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? '✕' : '☰'}</button>
+        <Link to="/" className="brand" onClick={close} aria-label="MPGI Lost & Found home">
+          <img src="/logo.png" alt="MPGI - blend of fine education" />
+          <span className="brand-sub">Lost &amp; Found</span>
+        </Link>
+        <button className="burger" aria-label="Menu" aria-expanded={open} onClick={() => setOpen(!open)}><Icon name={open ? 'close' : 'menu'} /></button>
         <nav className={open ? 'links open' : 'links'} onClick={close}>
           <NavLink to="/browse">Browse</NavLink>
           <NavLink to="/report/lost">Report lost</NavLink>
@@ -85,17 +94,17 @@ export default function App() {
       <PhoneGate />
       <main>
         <ErrorBoundary key={loc.pathname}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Auth mode="login" />} />
-          <Route path="/register" element={<Auth mode="register" />} />
-          <Route path="/browse" element={<Browse />} />
-          <Route path="/item/:id" element={<ItemDetail />} />
-          <Route path="/report/:type" element={<Protected><Report /></Protected>} />
-          <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
-          <Route path="/admin" element={<Protected admin><Admin /></Protected>} />
-          <Route path="*" element={<div className="wrap page"><h1>Page not found</h1><Link to="/">Back to home</Link></div>} />
-        </Routes>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Auth mode="login" />} />
+            <Route path="/register" element={<Auth mode="register" />} />
+            <Route path="/browse" element={<Browse />} />
+            <Route path="/item/:id" element={<ItemDetail />} />
+            <Route path="/report/:type" element={<Protected><Report /></Protected>} />
+            <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
+            <Route path="/admin" element={<Protected admin><Admin /></Protected>} />
+            <Route path="*" element={<div className="wrap page narrow center"><h1>Page not found</h1><p className="muted">The page you are looking for does not exist.</p><Link className="btn" to="/">Back to home</Link></div>} />
+          </Routes>
         </ErrorBoundary>
       </main>
       <footer className="foot">
